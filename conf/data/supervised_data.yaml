@@ -2,9 +2,9 @@ _target_: datasets.supervised_dataset.SLDataModule
 data_dirs: 
 ####To be changed####
 # change the path to the path where you downloaded the dataset
-  - '/local_storage/datasets/sgerard/xview2/train'
-  - '/local_storage/datasets/sgerard/xview2/test'
-  - '/local_storage/datasets/sgerard/xview2/tier3'
+  - "C:\\Users\\PC\\Desktop\\damage_assessement_data\\train"
+  - "C:\\Users\\PC\\Desktop\\damage_assessement_data\\tier3"
+  - "C:\\Users\\PC\\Desktop\\damage_assessement_data\\test"
 ######################
 
 target_disasters: 

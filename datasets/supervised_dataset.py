@@ -176,7 +176,8 @@ class SLDataModule(pl.LightningDataModule):
         """
 
         train_dirs = [
-            '/local_storage/datasets/sgerard/xview2/no_overlap/train']
+            '\\Users\\PC\\Desktop\\damage_assessement_data\\train',
+            '\\Users\\PC\\Desktop\\damage_assessement_data\\tier3']
         all_files = []
         for d in train_dirs:
             for f in sorted(listdir(path.join(d, 'images'))):
@@ -200,22 +201,39 @@ class SLDataModule(pl.LightningDataModule):
         print(" !!!!!!!!!!!! Using legacy idxs !!!!!!!!!!!!")
 
         legacy_train_idxs, legacy_val_idxs, legacy_all = self.legacy_get_stratified_train_val_split()
-        legacy_train = list([legacy_all[i].split(
-            "/")[-1].split("_p")[0] for i in legacy_train_idxs])
-        legacy_val = list([legacy_all[i].split("/")[-1].split("_p")[0]
-                          for i in legacy_val_idxs])
+
+            # Normalize paths using os.path.basename
+        legacy_train = [os.path.basename(legacy_all[i]).split("_p")[0] for i in legacy_train_idxs]
+        legacy_val = [os.path.basename(legacy_all[i]).split("_p")[0] for i in legacy_val_idxs]
+
+
+        # legacy_train = list([legacy_all[i].split(
+        #     "/")[-1].split("_p")[0] for i in legacy_train_idxs])
+        # legacy_val = list([legacy_all[i].split("/")[-1].split("_p")[0]
+        #                   for i in legacy_val_idxs])
         # this is ugly, should be done in a better way
-        train_idx = list([i for i in range(len(self.all_files)) if self.all_files[i].split(
-            "/")[-1].split("_p")[0] in legacy_train])
-        val_idx = list([i for i in range(len(self.all_files)) if self.all_files[i].split(
-            "/")[-1].split("_p")[0] in legacy_val])
+
+        # Convert self.all_files to use consistent path separators
+        all_files_basename = [os.path.basename(f).split("_p")[0] for f in self.all_files]
+
+        # Find indices of files that match the legacy train and val lists
+        train_idx = [i for i in range(len(self.all_files)) if all_files_basename[i] in legacy_train]
+        val_idx = [i for i in range(len(self.all_files)) if all_files_basename[i] in legacy_val]
+
+        # train_idx = list([i for i in range(len(self.all_files)) if self.all_files[i].split(
+        #     "/")[-1].split("_p")[0] in legacy_train])
+        # val_idx = list([i for i in range(len(self.all_files)) if self.all_files[i].split(
+        #     "/")[-1].split("_p")[0] in legacy_val])
         assert len(train_idx) == len(legacy_train_idxs)
         assert len(val_idx) == len(legacy_val_idxs)
         not_train_lbl_idx = list(
             set(range(len(self.all_files))) - set(train_idx) - set(val_idx))
-        # remove files from excluded disasters
-        test_idx = list([i for i in not_train_lbl_idx if self.all_files[i].split(
-            "/")[-1].split("_")[0] not in self.exclude_disasters])
+        
+        # Remove files from excluded disasters
+        test_idx = [i for i in not_train_lbl_idx if os.path.basename(self.all_files[i]).split("_")[0] not in self.exclude_disasters]
+        # # remove files from excluded disasters
+        # test_idx = list([i for i in not_train_lbl_idx if self.all_files[i].split(
+        #     "/")[-1].split("_")[0] not in self.exclude_disasters])
 
         return {"train_lbl": train_idx,
                 "val_lbl": val_idx,

@@ -12,6 +12,7 @@ def main(cfg: DictConfig) -> pl.Trainer:
     config = OmegaConf.to_container(cfg, resolve=True)
     data_module = hydra.utils.instantiate(cfg.data)
     network = hydra.utils.instantiate(cfg.network)
+    os.environ['WANDB_SSL_VERIFY']='false'
     wandb.init(project=cfg.logger.project,
                config=config, 
                group=cfg.group, 
