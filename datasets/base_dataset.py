@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import torchvision
+from datasets.transforms import FusionAugmentation
 
 def normalize_image(img: torch.Tensor) -> torch.Tensor:
     img = img.to(torch.float32)
@@ -17,6 +18,7 @@ class LabeledDataset(Dataset):
                  all_files: Sequence[str],
                  labeled_idxs: Sequence[int],
                  labeled_transforms:  torchvision.transforms.Compose,
+                 #augmentation: FusionAugmentation,
                  train: bool) -> None:
         """
         Args:
@@ -30,6 +32,7 @@ class LabeledDataset(Dataset):
         self.all_files = all_files
         self.labeled_idxs = labeled_idxs
         self.labeled_transforms = labeled_transforms
+        #self.augmentation = augmentation
         self.train = train
 
     def __len__(self) -> int:
@@ -39,15 +42,19 @@ class LabeledDataset(Dataset):
         _idx = self.labeled_idxs[idx]
 
         fn = self.all_files[_idx]
-
+        # print(f'fn={fn}')
         img_pre = cv2.imread(fn, cv2.IMREAD_COLOR)
         img_post = cv2.imread(fn.replace('_pre_', '_post_'), cv2.IMREAD_COLOR)
 
-        msk_pre = cv2.imread(fn.replace('/images/', '/masks/'),
+        # Apply augmentation
+        #img_pre = self.augmentation(img_pre)
+        #img_post = self.augmentation(img_post)
+        
+        msk_pre = cv2.imread(fn.replace('\\images\\', '\\masks\\'),
                              cv2.IMREAD_UNCHANGED)
-        msk_post = cv2.imread(fn.replace('/images/', '/masks/').replace(
-            '_pre_disaster', '_post_disaster'), cv2.IMREAD_UNCHANGED)
-
+        msk_post_path = fn.replace('\\images\\', '\\masks\\').replace(
+            '_pre_disaster', '_post_disaster')
+        msk_post = cv2.imread(msk_post_path,cv2.IMREAD_UNCHANGED)
         msk0 = msk_pre
         msk1 = np.zeros_like(msk_post)
         msk2 = np.zeros_like(msk_post)
@@ -65,9 +72,10 @@ class LabeledDataset(Dataset):
         msk4 = msk4[..., np.newaxis]
 
         msk = np.concatenate([msk0, msk1, msk2, msk3, msk4], axis=2)
-        msk = (np.greater(msk, 127)) * 1.
+        # Normalize mask values to be binary (0 or 1)
+        msk = (msk > 127).astype(np.float32)
+        #msk = (np.greater(msk, 127)) * 1.
         img = np.concatenate([img_pre, img_post], axis=2)
-
         # Reshaping tensors from (H, W, C) to (C, H, W)
         # we need unit8 for the transforms
         img = torch.from_numpy(img.transpose((2, 0, 1))).to(torch.uint8)
@@ -84,4 +92,8 @@ class LabeledDataset(Dataset):
 
         # we normalize the image after the transforms and change it back to float
         img = normalize_image(img)
-        return {'img': img, 'msk': msk, 'fn': fn}
+
+        # Print out values for debugging
+        # print(f"img min: {img.min().item()}, img max: {img.max().item()}")
+        # print(f"msk min: {msk.min().item()}, msk max: {msk.max().item()}")
+        return {'img': img.float(), 'msk': msk.float(), 'fn': fn}
