@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import torchvision
-from datasets.transforms import FusionAugmentation
+#from datasets.transforms import FusionAugmentation
 
 def normalize_image(img: torch.Tensor) -> torch.Tensor:
     img = img.to(torch.float32)
