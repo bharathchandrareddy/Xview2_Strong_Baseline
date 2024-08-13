@@ -4,6 +4,8 @@ from typing import Sequence
 import torch
 import torchvision.transforms.functional as TF
 from torchvision import transforms
+import cv2
+import numpy as np
 
 
 class ResizeCrop(torch.nn.Module):
@@ -68,3 +70,48 @@ class ResizeCrop(torch.nn.Module):
                         antialias=True)
 
         return tensor
+
+
+class FusionAugmentation:
+    def __init__(self):
+        pass
+
+    def contrast_enhancement(self, image):
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        return clahe.apply(image)
+
+    def unsharp_mask(self, image, kernel_size=(5, 5), sigma=1.0, strength=1.5):
+        blurred = cv2.GaussianBlur(image, kernel_size, sigma)
+        sharpened = float(strength + 1) * image - float(strength) * blurred
+        sharpened = np.maximum(sharpened, 0)
+        sharpened = np.minimum(sharpened, 255)
+        sharpened = sharpened.round().astype(np.uint8)
+        return sharpened
+
+    def sobel_edge_detection(self, image):
+        sobelx = cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=5)  # x direction
+        sobely = cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=5)  # y direction
+        magnitude = np.sqrt(sobelx**2 + sobely**2)
+        magnitude = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
+        magnitude = np.uint8(magnitude)
+        return magnitude
+
+    def image_augmentation_rgb(self, image):
+        channels = cv2.split(image)
+        augmented_channels = []
+        for channel in channels:
+            enhanced_channel = self.contrast_enhancement(channel)
+            unsharp_image = self.unsharp_mask(enhanced_channel)
+            edge_image = self.sobel_edge_detection(unsharp_image)
+            augmented_channels.append(edge_image)
+        augmented_image = cv2.merge(augmented_channels)
+        return augmented_image
+
+    def __call__(self, image):
+        augmented_image = self.image_augmentation_rgb(image)
+        tensor_image = torch.tensor(augmented_image, dtype=torch.float32)
+        tensor_image = tensor_image / 255.0
+        tensor_image = tensor_image.permute(2, 0, 1)
+        #print(f'tensor shape of image after augmentation= {tensor_image.shape}')
+        return tensor_image
+    

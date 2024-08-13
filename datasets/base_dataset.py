@@ -5,8 +5,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 import torchvision
-#from datasets.transforms import FusionAugmentation
+from datasets.transforms import FusionAugmentation
 
+augmenter = FusionAugmentation()
 def normalize_image(img: torch.Tensor) -> torch.Tensor:
     img = img.to(torch.float32)
     img /= 127
@@ -45,11 +46,8 @@ class LabeledDataset(Dataset):
         # print(f'fn={fn}')
         img_pre = cv2.imread(fn, cv2.IMREAD_COLOR)
         img_post = cv2.imread(fn.replace('_pre_', '_post_'), cv2.IMREAD_COLOR)
-
-        # Apply augmentation
-        #img_pre = self.augmentation(img_pre)
-        #img_post = self.augmentation(img_post)
-        
+        pre_aug = augmenter(img_pre)
+        post_aug = augmenter(img_post)
         msk_pre = cv2.imread(fn.replace('\\images\\', '\\masks\\'),
                              cv2.IMREAD_UNCHANGED)
         msk_post_path = fn.replace('\\images\\', '\\masks\\').replace(
@@ -75,16 +73,21 @@ class LabeledDataset(Dataset):
         # Normalize mask values to be binary (0 or 1)
         msk = (msk > 127).astype(np.float32)
         #msk = (np.greater(msk, 127)) * 1.
-        img = np.concatenate([img_pre, img_post], axis=2)
+        #img = np.concatenate([pre_aug, post_aug], dim=0)
+        img = torch.cat((pre_aug,post_aug),dim=0)
         # Reshaping tensors from (H, W, C) to (C, H, W)
         # we need unit8 for the transforms
-        img = torch.from_numpy(img.transpose((2, 0, 1))).to(torch.uint8)
+        #img = torch.from_numpy(img.transpose((2, 0, 1))).to(torch.uint8)
+        
         msk = torch.from_numpy(msk.transpose((2, 0, 1))).float()
-
+        #print('labled transforms=',self.labeled_transforms)
+        #print('train value =',self.train)
         if self.labeled_transforms is not None and self.train:
             # cat img and masks to perform same transformations on both
             concat = torch.cat([img, msk], dim=0)
+            
             concat = self.labeled_transforms(concat)
+            #print('shape of transformations after concat=',concat.shape)
             img_shape = img.shape
             # check dimensions
             img = concat[:img_shape[0], ...]
@@ -96,4 +99,6 @@ class LabeledDataset(Dataset):
         # Print out values for debugging
         # print(f"img min: {img.min().item()}, img max: {img.max().item()}")
         # print(f"msk min: {msk.min().item()}, msk max: {msk.max().item()}")
+        #print(f'shape of image after all transformations={img.shape}')
+        #print(f'shape of mask after all transformations={msk.shape}')
         return {'img': img.float(), 'msk': msk.float(), 'fn': fn}
