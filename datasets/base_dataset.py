@@ -39,6 +39,71 @@ class LabeledDataset(Dataset):
     def __len__(self) -> int:
         return len(self.labeled_idxs)
 
+    # def __getitem__(self, idx: int) -> Dict[str, Union[torch.Tensor,  Any, str]]:
+    #     _idx = self.labeled_idxs[idx]
+
+    #     fn = self.all_files[_idx]
+    #     # print(f'fn={fn}')
+    #     img_pre = cv2.imread(fn, cv2.IMREAD_COLOR)
+    #     img_post = cv2.imread(fn.replace('_pre_', '_post_'), cv2.IMREAD_COLOR)
+
+    #     # Apply augmentation
+    #     #img_pre = self.augmentation(img_pre)
+    #     #img_post = self.augmentation(img_post)
+        
+    #     msk_pre = cv2.imread(fn.replace('\\images\\', '\\masks\\'),
+    #                          cv2.IMREAD_UNCHANGED)
+    #     msk_post_path = fn.replace('\\images\\', '\\masks\\').replace(
+    #         '_pre_disaster', '_post_disaster')
+    #     msk_post = cv2.imread(msk_post_path,cv2.IMREAD_UNCHANGED)
+    #     msk0 = msk_pre
+    #     msk1 = np.zeros_like(msk_post)
+    #     msk2 = np.zeros_like(msk_post)
+    #     msk3 = np.zeros_like(msk_post)
+    #     msk4 = np.zeros_like(msk_post)
+    #     msk1[msk_post == 1] = 255
+    #     msk2[msk_post == 2] = 255
+    #     msk3[msk_post == 3] = 255
+    #     msk4[msk_post == 4] = 255
+
+    #     msk0 = msk0[..., np.newaxis]
+    #     msk1 = msk1[..., np.newaxis]
+    #     msk2 = msk2[..., np.newaxis]
+    #     msk3 = msk3[..., np.newaxis]
+    #     msk4 = msk4[..., np.newaxis]
+
+    #     msk = np.concatenate([msk0, msk1, msk2, msk3, msk4], axis=2)
+    #     # Normalize mask values to be binary (0 or 1)
+    #     msk = (msk > 127).astype(np.float32)
+    #     #msk = (np.greater(msk, 127)) * 1.
+    #     img = np.concatenate([img_pre, img_post], axis=2)
+    #     # Reshaping tensors from (H, W, C) to (C, H, W)
+    #     # we need unit8 for the transforms
+    #     img = torch.from_numpy(img.transpose((2, 0, 1))).to(torch.uint8)
+    #     print('shape of image tensor=',img.shape)
+    #     msk = torch.from_numpy(msk.transpose((2, 0, 1))).float()
+    #     print('shape of msk tensor=',msk.shape)
+
+    #     if self.labeled_transforms is not None and self.train:
+    #         # cat img and masks to perform same transformations on both
+    #         concat = torch.cat([img, msk], dim=0)
+    #         print(f'shape of img + msk tensor before applying transforms {concat.shape}')
+    #         concat = self.labeled_transforms(concat)
+    #         img_shape = img.shape
+    #         # check dimensions
+    #         img = concat[:img_shape[0], ...]
+    #         print('shape after dividing the concat image=',img.shape)
+    #         msk = concat[img_shape[0]:, ...]
+    #         print('shape after dividing the concat mask=',msk.shape)
+
+    #     # we normalize the image after the transforms and change it back to float
+    #     img = normalize_image(img)
+
+    #     # Print out values for debugging
+    #     # print(f"img min: {img.min().item()}, img max: {img.max().item()}")
+    #     # print(f"msk min: {msk.min().item()}, msk max: {msk.max().item()}")
+    #     return {'img': img.float(), 'msk': msk.float(), 'fn': fn}
+
     def __getitem__(self, idx: int) -> Dict[str, Union[torch.Tensor,  Any, str]]:
         _idx = self.labeled_idxs[idx]
 
@@ -68,13 +133,16 @@ class LabeledDataset(Dataset):
         msk2 = msk2[..., np.newaxis]
         msk3 = msk3[..., np.newaxis]
         msk4 = msk4[..., np.newaxis]
-
+        # print('shape of msk0',msk0.shape)
+        # print('shape of msk1',msk1.shape)
+        # print('shape of msk2',msk2.shape)
+        # print('shape of msk3',msk3.shape)
+        # print('shape of msk4',msk4.shape)
         msk = np.concatenate([msk0, msk1, msk2, msk3, msk4], axis=2)
         # Normalize mask values to be binary (0 or 1)
         msk = (msk > 127).astype(np.float32)
         #msk = (np.greater(msk, 127)) * 1.
-        img = np.concatenate([img_pre, img_post], dim=0)
-        
+        img = np.concatenate([img_pre, img_post], axis=2)
         img_aug = torch.cat((pre_aug,post_aug),dim=0)
         # Reshaping tensors from (H, W, C) to (C, H, W)
         # we need unit8 for the transforms
@@ -85,12 +153,12 @@ class LabeledDataset(Dataset):
         #print('train value =',self.train)
         if self.labeled_transforms is not None and self.train:
             # cat img and masks to perform same transformations on both
-            concat = torch.cat([img, msk], dim=0)
+            concat = torch.cat([img, msk,img_aug], dim=0)
             
             concat = self.labeled_transforms(concat)
             #print('shape of transformations after concat=',concat.shape)
             img_shape = img.shape
-            msk_shape=msk.shape
+            msk_shape = msk.shape
             # check dimensions
             img = concat[:img_shape[0], ...]
             msk = concat[img_shape[0]:img_shape[0]+msk_shape[0], ...]
@@ -98,10 +166,11 @@ class LabeledDataset(Dataset):
 
         # we normalize the image after the transforms and change it back to float
         img = normalize_image(img)
+        img_aug = normalize_image(img_aug)
 
         # Print out values for debugging
         # print(f"img min: {img.min().item()}, img max: {img.max().item()}")
         # print(f"msk min: {msk.min().item()}, msk max: {msk.max().item()}")
         #print(f'shape of image after all transformations={img.shape}')
         #print(f'shape of mask after all transformations={msk.shape}')
-        return {'img': img.float(), 'msk': msk.float(), 'img_aug':img_aug.float() ,'fn': fn}
+        return {'img': img.float(), 'msk': msk.float(), 'img_aug':img_aug.float(),'fn': fn}

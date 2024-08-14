@@ -50,27 +50,25 @@ def process_image(json_file):
 
     msk = np.zeros((1024, 1024), dtype='uint8')
     msk_damage = np.zeros((1024, 1024), dtype='uint8')
+    print(f"Processing file: {json_file}")
 
-
-
-    for feat in js1['features']['xy']:
+    for feat in js1['features']['lng_lat']:
         poly = loads(feat['wkt'])
         _msk = mask_for_polygon(poly)
         msk[_msk > 0] = 255
+    print(f"Pre-disaster mask created for {json_file}")
 
-    for feat in js2['features']['xy']:
+    for feat in js2['features']['lng_lat']:
         poly = loads(feat['wkt'])
         subtype = feat['properties']['subtype']
         _msk = mask_for_polygon(poly)
         msk_damage[_msk > 0] = damage_dict[subtype]
-        
 
-    pre_mask_path = json_file.replace('\\labels\\', '\\masks\\').replace('_pre_disaster.json', '_pre_disaster.png')
-    post_mask_path = json_file.replace('\\labels\\','\\masks\\').replace('_pre_disaster.json', '_post_disaster.png')
+    pre_mask_path = json_file.replace('/labels/', '/masks/').replace('_pre_disaster.json', '_pre_disaster.png')
+    post_mask_path = json_file.replace('/labels/', '/masks/').replace('_pre_disaster.json', '_post_disaster.png')
+
     cv2.imwrite(pre_mask_path, msk, [cv2.IMWRITE_PNG_COMPRESSION, 9])
     cv2.imwrite(post_mask_path, msk_damage, [cv2.IMWRITE_PNG_COMPRESSION, 9])
-
-    
 
 if __name__ == '__main__':
     t0 = timeit.default_timer()
@@ -80,25 +78,10 @@ if __name__ == '__main__':
         makedirs(path.join(d, masks_dir), exist_ok=True)
         for f in sorted(listdir(path.join(d, 'images'))):
             if '_pre_disaster.png' in f:
-                label_path = path.join(d,'labels',f.replace('_pre_disaster.png','_pre_disaster.json'))
-                all_files.append(label_path)
-
-    total_damage_count = {
-        "no-damage": 0,
-        "minor-damage": 0,
-        "major-damage": 0,
-        "destroyed": 0,
-        "un-classified": 0
-    }
+                all_files.append(path.join(d, 'labels', f.replace('_pre_disaster.png', '_pre_disaster.json')))
 
     with Pool() as pool:
-        damage_counts = pool.map(process_image, all_files)
+        _ = pool.map(process_image, all_files)
 
-    # Aggregate the counts from all files
-    for count in damage_counts:
-        for key in total_damage_count:
-            total_damage_count[key] += count[key]
-
-    print('Total damage counts across all files:', total_damage_count)
     elapsed = timeit.default_timer() - t0
     print('Time: {:.3f} min'.format(elapsed / 60))
