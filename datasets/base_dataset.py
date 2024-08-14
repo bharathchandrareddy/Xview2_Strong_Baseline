@@ -73,11 +73,12 @@ class LabeledDataset(Dataset):
         # Normalize mask values to be binary (0 or 1)
         msk = (msk > 127).astype(np.float32)
         #msk = (np.greater(msk, 127)) * 1.
-        #img = np.concatenate([pre_aug, post_aug], dim=0)
-        img = torch.cat((pre_aug,post_aug),dim=0)
+        img = np.concatenate([img_pre, img_post], dim=0)
+        
+        img_aug = torch.cat((pre_aug,post_aug),dim=0)
         # Reshaping tensors from (H, W, C) to (C, H, W)
         # we need unit8 for the transforms
-        #img = torch.from_numpy(img.transpose((2, 0, 1))).to(torch.uint8)
+        img = torch.from_numpy(img.transpose((2, 0, 1))).to(torch.uint8)
         
         msk = torch.from_numpy(msk.transpose((2, 0, 1))).float()
         #print('labled transforms=',self.labeled_transforms)
@@ -89,9 +90,11 @@ class LabeledDataset(Dataset):
             concat = self.labeled_transforms(concat)
             #print('shape of transformations after concat=',concat.shape)
             img_shape = img.shape
+            msk_shape=msk.shape
             # check dimensions
             img = concat[:img_shape[0], ...]
-            msk = concat[img_shape[0]:, ...]
+            msk = concat[img_shape[0]:img_shape[0]+msk_shape[0], ...]
+            img_aug = concat[img_shape[0]+msk_shape[0]:,...]
 
         # we normalize the image after the transforms and change it back to float
         img = normalize_image(img)
@@ -101,4 +104,4 @@ class LabeledDataset(Dataset):
         # print(f"msk min: {msk.min().item()}, msk max: {msk.max().item()}")
         #print(f'shape of image after all transformations={img.shape}')
         #print(f'shape of mask after all transformations={msk.shape}')
-        return {'img': img.float(), 'msk': msk.float(), 'fn': fn}
+        return {'img': img.float(), 'msk': msk.float(), 'img_aug':img_aug.float() ,'fn': fn}
