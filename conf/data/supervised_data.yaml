@@ -4,7 +4,7 @@ data_dirs:
 # change the path to the path where you downloaded the dataset
   - "C:\\Users\\PC\\Desktop\\damage_assessement_data\\train"
   - "C:\\Users\\PC\\Desktop\\damage_assessement_data\\tier3"
-  - "C:\\Users\\PC\\Desktop\\damage_assessement_data\\test"
+#  - "C:\\Users\\PC\\Desktop\\damage_assessement_data\\test"
 ######################
 
 target_disasters: 

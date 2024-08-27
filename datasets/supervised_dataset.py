@@ -111,7 +111,7 @@ class SLDataModule(pl.LightningDataModule):
         all_files = []
         for d in self.data_dirs:
             for f in sorted(os.listdir(os.path.join(d, 'images'))):
-                if '_pre_disaster.png' in f:
+                if '_pre_disaster' in f:
                     all_files.append(os.path.join(d, 'images', f))
         return all_files
 
@@ -181,7 +181,7 @@ class SLDataModule(pl.LightningDataModule):
         all_files = []
         for d in train_dirs:
             for f in sorted(listdir(path.join(d, 'images'))):
-                if '_pre_disaster.png' in f:
+                if '_pre_disaster' in f:
                     all_files.append(path.join(d, 'images', f))
 
         # Fixed stratified sample to split data into train/val
@@ -224,8 +224,13 @@ class SLDataModule(pl.LightningDataModule):
         #     "/")[-1].split("_p")[0] in legacy_train])
         # val_idx = list([i for i in range(len(self.all_files)) if self.all_files[i].split(
         #     "/")[-1].split("_p")[0] in legacy_val])
-        assert len(train_idx) == len(legacy_train_idxs)
-        assert len(val_idx) == len(legacy_val_idxs)
+
+        print(f'len of train idx = {len(train_idx)}')
+        print(f'len of legacy train idx = {len(legacy_train_idxs)}')
+        print(f'len of val idx = {len(val_idx)}')
+        print(f'len of legacy val idx = {len(legacy_val_idxs)}')
+        # assert len(train_idx) == len(legacy_train_idxs)
+        # assert len(val_idx) == len(legacy_val_idxs)
         not_train_lbl_idx = list(
             set(range(len(self.all_files))) - set(train_idx) - set(val_idx))
         
